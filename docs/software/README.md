@@ -219,129 +219,103 @@
     SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
     SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
 
-## RESTfull сервіс для управління даними
+## RESTfull сервіс для управління даними на базі Python, Flask для таблиці "role"
 
-RESTfull сервіс для управління таблиці User у базі даних 'quiz' створеної в MySQL. Цей застосунок був створений за допомогою
-фреймворку Flask на мові Python.
-RESTfull сервіс представляє собою базовий CRUD застосунок, тобто "Набор джентельмена", Create, Read, Update і Delete.
-
-### Файл app.py
-
-#### Імпорти:
+### App.py
 
     from flask import Flask, request, jsonify
-    from flask_restful import Resource, Api
     from flask_sqlalchemy import SQLAlchemy
     
     app = Flask(__name__)
-    api = Api(app)
-
-#### Конфігурація бази даних MySQL:
-
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root:D18132004_ua@localhost/quiz'
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:SQLpasswd1@localhost/quiz'
     db = SQLAlchemy(app)
-
-#### Створення моделі для User і Role:
-
-    class RoleModel(db.Model):
-    __tablename__ = 'Role'
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(45))
-
-    users = db.relationship('UserModel', backref='role')
-
-#### Модель User:
-    class UserModel(db.Model):
-    __tablename__ = 'User'
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    first_name = db.Column(db.String(45))
-    last_name = db.Column(db.String(45))
-    nick_name = db.Column(db.String(45), unique=True)
-    email = db.Column(db.String(128), unique=True)
-    password = db.Column(db.String(64))
-    role_id = db.Column(db.Integer, db.ForeignKey('Role.id'), nullable=False)
-
-    def to_dict(self):
-        return {
-            "id": self.id,
-            "first_name": self.first_name,
-            "last_name": self.last_name,
-            "nick_name": self.nick_name,
-            "email": self.email,
-            "password": self.password,
-            "role_id": self.role_id
-        }
-
-#### Ініціалізація бази даних:
-
-    with app.app_context():
-    db.create_all()
     
-    class User(Resource):
-    def get(self, user_id=None):
-    if user_id is None:
-    users = UserModel.query.all()
-    return [user.to_dict() for user in users]
-    else:
-    user = UserModel.query.get(user_id)
-    if user:
-    return user.to_dict()
-    return {'message': 'User not found'}, 404
-
-    def post(self):
+    class Role(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        name = db.Column(db.String(32), nullable=False)
+    
+        def __init__(self, id, name):
+            self.id = id
+            self.name = name
+    
+    """Маршрут для отримання всіх ролей"""
+    @app.route('/roles', methods=['GET'])
+    def get_roles():
+        roles = Role.query.all()
+    
+        """Підготовка результату у вигляді JSON"""
+        result = [{'id': role.id, 'name': role.name} for role in roles]
+        return jsonify(result)
+    
+    """Маршрут для створення нової ролі"""
+    @app.route('/roles', methods=['POST'])
+    def create_role():
         data = request.get_json()
-        existing_user_email = UserModel.query.filter_by(email=data.get('email')).first()
-        existing_user_nick = UserModel.query.filter_by(nick_name=data.get('nick_name')).first()
-        if existing_user_email is not None:
-            return {'message': 'User with this email already exists'}, 400
-        if existing_user_nick is not None:
-            return {'message': 'User with this nickname already exists'}, 400
-        new_user = UserModel(
-            first_name=data.get('first_name'),
-            last_name=data.get('last_name'),
-            nick_name=data.get('nick_name'),
-            email=data.get('email'),
-            password=data.get('password'),
-            role_id=data.get('role_id')
-        )
-        db.session.add(new_user)
-        db.session.commit()
-        return {'message': 'User created successfully', 'user': new_user.to_dict()}, 201
-
-    def put(self, user_id):
-        user = UserModel.query.get(user_id)
-        if user:
-            data = request.get_json()
-            user.first_name = data.get('first_name', user.first_name)
-            user.last_name = data.get('last_name', user.last_name)
-            user.nick_name = data.get('nick_name', user.nick_name)
-            user.email = data.get('email', user.email)
-            user.password = data.get('password', user.password)
-            user.role_id = data.get('role_id', user.role_id)
-            db.session.commit()
-            return {'message': 'User updated successfully', 'user': user.to_dict()}
-        return {'message': 'User not found'}, 404
-
-    def delete(self, user_id):
-        user = UserModel.query.get(user_id)
-        if user:
-            db.session.delete(user)
-            db.session.commit()
-            return {'message': 'User deleted successfully'}, 200
-        return {'message': 'User not found'}, 404
-
-    api.add_resource(User, '/users', '/users/<int:user_id>')
+        id = data.get('id')
+        name = data.get('name')
     
-    @app.route('/')
-    def index():
-    return "Welcome to the User API"
+        """Перевірка наявності ідентифікатора та імені у вхідних даних"""
+        if not id or not name:
+            return jsonify({'error': 'Ідентифікатор та ім`я обов`язкові'}), 400
+    
+        """Перевірка наявності ролі з вказаним ідентифікатором"""
+        existing_role = Role.query.filter_by(id=id).first()
+        if existing_role:
+            return jsonify({'error': f'Роль з ідентифікатором {id} вже існує'}), 409
+    
+        """Перевірка наявності ролі з вказаним іменем"""
+        existing_role = Role.query.filter_by(name=name).first()
+        if existing_role:
+            return jsonify({'error': f'Роль з іменем {name} вже існує'}), 409
+    
+        """Створення нової ролі та збереження у базі даних"""
+        new_role = Role(id=id, name=name)
+        db.session.add(new_role)
+        db.session.commit()
+    
+        return jsonify({'message': f'Роль з ідентифікатором {id} та іменем {name} створена успішно'}), 201
+    
+    """Маршрут для оновлення інформації про роль"""
+    @app.route('/roles/<int:id>', methods=['PUT'])
+    def update_role(id):
+        role = Role.query.get(id)
+    
+        """Перевірка існування ролі з вказаним ідентифікатором"""
+        if not role:
+            return jsonify({'error': f'Роль з ідентифікатором {id} не знайдена'}), 404
+    
+        data = request.get_json()
+        name = data.get('name')
+    
+        """Перевірка наявності нового імені у вхідних даних"""
+        if not name:
+            return jsonify({'error': 'Ім`я обов`язкове'}), 400
+    
+        """Перевірка наявності ролі з вказаним іменем"""
+        existing_role = Role.query.filter(Role.name == name, Role.id != id).first()
+        if existing_role:
+            return jsonify({'error': f'Роль з іменем {name} вже існує'}), 409
+    
+        """Оновлення імені ролі та збереження у базі даних"""
+        role.name = name
+        db.session.commit()
+    
+        return jsonify({'message': f'Роль з ідентифікатором {id} оновлена успішно, нове ім`я - {name}'})
+    
+    """Маршрут для видалення ролі"""
+    @app.route('/roles/<int:id>', methods=['DELETE'])
+    def delete_role(id):
+        role = Role.query.get(id)
+    
+        """Перевірка існування ролі з вказаним ідентифікатором"""
+        if not role:
+            return jsonify({'error': f'Роль з ідентифікатором {id} не знайдена'}), 404
+        role_name = role.name
+    
+        """Видалення ролі з бази даних"""
+        db.session.delete(role)
+        db.session.commit()
+        return jsonify({'message': f'Роль з ідентифікатором {id} та іменем {role_name} видалена успішно'})
     
     if __name__ == '__main__':
-    app.run(debug=True)
-
-
-
-
-
-
+        app.run(debug=True)

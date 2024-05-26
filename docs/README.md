@@ -10,7 +10,7 @@ footer: "ECL 2.0 Licensed | Copyright © [YYYY] [Your Name]"
 **Виконав(-ла):** 
 
 *студент(-ка) 2-го курсу, групи (ІО-25)*
-- <span padding-right:5em></span> **Дяченко Данііл** <a href="https://t.me/Daniil_Tyz" target="_blank"> Telegram </a> **Пошта:** *daniil.dyachenko.2018@gmail.com* 
+- <span padding-right:5em></span> **Олексій КИРИЧЕНКО** <a href="https://t.me/olexx11" target="_blank"> Telegram </a> **Пошта:** *a0971720442@gmail.com* 
 
 **Керівник**
 
